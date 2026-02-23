@@ -1,0 +1,114 @@
+# ─────────────────────────────
+# This is an AI generated version 0 of this project.
+# ─────────────────────────────
+
+component:
+  name: <ComponentName>
+  version: 1.0.0
+  description: <Short behavioral purpose statement>
+
+# ─────────────────────────────
+# 1. ASSUMPTIONS (Environment Obligations)
+# ─────────────────────────────
+assumptions:
+
+  props:
+    required:
+      - name: <propName>
+        type: <type>
+        description: <behavioral meaning>
+
+    optional:
+      - name: <propName>
+        type: <type>
+        default: <value>
+        description: <behavioral meaning>
+
+  prop_constraints:
+    - rule: <boolean logic rule>
+      example: "value is required when controlled=true"
+
+  children:
+    allowed:
+      - type: <ComponentName | ReactNode>
+        required: true | false
+        cardinality: single | multiple
+
+  environment:
+    - condition: <external expectation>
+      example: "parent controls state when controlled=true"
+
+# ─────────────────────────────
+# 2. GUARANTEES (Component Obligations)
+# ─────────────────────────────
+guarantees:
+
+  rendering:
+    - rule: <render condition>
+      example: "renders disabled state styles when disabled=true"
+
+  state_behavior:
+    controlled:
+      definition: <controlled logic>
+    uncontrolled:
+      definition: <internal state logic>
+
+  events:
+    - name: <eventName>
+      trigger: <interaction trigger>
+      condition: <when it fires>
+      payload:
+        type: <type>
+        shape: <schema description>
+
+  interaction_rules:
+    - rule: <interaction constraint>
+      example: "does not emit onClick when disabled=true"
+
+  accessibility:
+    roles:
+      - <ARIA role>
+    keyboard_support:
+      - <key behavior>
+
+# ─────────────────────────────
+# 3. STATE MACHINE (Optional but Powerful)
+# ─────────────────────────────
+state_machine:
+
+  states:
+    - idle
+    - focused
+    - disabled
+    - loading
+
+  transitions:
+    - from: idle
+      to: focused
+      trigger: focus event
+      guard: not disabled
+
+# ─────────────────────────────
+# 4. REFINEMENT (Variants)
+# ─────────────────────────────
+refinements:
+
+  variants:
+    - name: <variantName>
+      strengthens_assumptions:
+        - <rule>
+      strengthens_guarantees:
+        - <rule>
+
+# ─────────────────────────────
+# 5. COMPOSITION RULES
+# ─────────────────────────────
+composition:
+
+  child_override_rules:
+    - condition: <parent condition>
+      effect: <behavioral override>
+
+  event_propagation:
+    bubbles: true | false
+    stops_on: <condition>
