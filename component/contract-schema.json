@@ -1,0 +1,58 @@
+
+
+{
+  "type": "object",
+  
+  "$defs": {
+
+    "propType":{
+      "type": "string",
+      "enum": ["string", "number", "boolean", "slot", "swap"]
+    }
+
+  },
+
+
+  "properties": {
+    "kind": { "type": "string", "const": "component" },
+
+    "name": { "type": "string" },
+    "props": {
+        "type": "object",
+        "name": {"type":"string"},
+        "propType": {"$ref": "#/$defs/propType"}
+    },
+    "nested": {},
+    "events":{},
+    "scenarios":{}
+  },
+  "required": ["kind", "name"],
+  "additionalProperties": true
+}
+
+
+
+
+
+
+
+{
+  "type": "object",
+  "properties": {
+    "id": { "type": "string" },
+    "type": { "const": "card" },
+    "title": { "type": "string" },
+    "size": { "type": "string", "enum": ["sm", "md", "lg"] },
+    "tags": { "type": "array", "items": { "type": "string" } },
+    "meta": {
+      "type": "object",
+      "properties": {
+        "createdBy": { "type": "string" }
+      },
+      "required": ["createdBy"]
+    },
+    "variant": { "type": "string", "enum": ["primary", "secondary"] }
+  },
+  "required": ["id", "type"],
+  "additionalProperties": false
+}
