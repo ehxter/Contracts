@@ -1,0 +1,331 @@
+{
+  "kind": "component",
+  "name": "Switch",
+  "version": "1.0.0",
+
+  "figma": {
+    "nodeId": "101:78",
+    "pageId": "0:2",
+    "pageName": "Internal Only Canvas",
+    "componentSetId": "101:78",
+    "variants": [
+      { "nodeId": "101:79", "label": "State=Rest, Switch=True" },
+      { "nodeId": "101:81", "label": "State=Hovered, Switch=True" },
+      { "nodeId": "101:83", "label": "State=Hovered, Switch=False" },
+      { "nodeId": "101:84", "label": "State=Rest, Switch=False" },
+      { "nodeId": "101:85", "label": "State=Disabled, Switch=True" },
+      { "nodeId": "101:87", "label": "State=Disabled, Switch=False" }
+    ]
+  },
+
+  "description": "A binary toggle control that lets a user turn a single option on or off. Communicates its current value through thumb position. Supports controlled and uncontrolled usage.",
+
+  "props": {
+    "checked": {
+      "type": "boolean",
+      "default": false,
+      "figma_property": "Switch",
+      "description": "The current on/off value of the switch. When provided externally, the component operates in controlled mode."
+    },
+    "disabled": {
+      "type": "boolean",
+      "default": false,
+      "figma_property": "State=Disabled",
+      "description": "Prevents all user-initiated interaction. The switch still reflects its current checked value."
+    },
+    "defaultChecked": {
+      "type": "boolean",
+      "default": false,
+      "figma_property": null,
+      "description": "Initial value used only in uncontrolled mode. Ignored if checked is provided."
+    },
+    "onChange": {
+      "type": "function",
+      "default": null,
+      "figma_property": null,
+      "description": "Callback invoked when the user toggles the switch. Receives the new checked value. Not called on programmatic prop changes."
+    },
+    "aria-label": {
+      "type": "string",
+      "default": null,
+      "figma_property": null,
+      "description": "Accessible name. Required when no visible label is associated with the switch."
+    },
+    "aria-labelledby": {
+      "type": "string",
+      "default": null,
+      "figma_property": null,
+      "description": "ID of an external element that labels this switch. Alternative to aria-label."
+    }
+  },
+
+  "states": {
+    "rest": {
+      "figma_variant": "State=Rest",
+      "description": "Default idle state. No active user interaction.",
+      "entry_conditions": ["pointer leaves the component", "focus is lost", "disabled prop becomes false"],
+      "exit_conditions": ["pointer enters", "keyboard focus received", "disabled prop becomes true"]
+    },
+    "hovered": {
+      "figma_variant": "State=Hovered",
+      "description": "Pointer is over the component. Indicates interactivity.",
+      "entry_conditions": ["pointerenter fires and disabled is false"],
+      "exit_conditions": ["pointerleave fires", "disabled prop becomes true", "pointer is pressed"]
+    },
+    "focused": {
+      "figma_variant": null,
+      "description": "Component has keyboard focus. Not defined as a Figma variant but required for accessible implementation.",
+      "entry_conditions": ["tab or shift+tab navigates to component", "programmatic focus() call"],
+      "exit_conditions": ["blur fires", "tab moves focus away", "disabled prop becomes true"]
+    },
+    "pressed": {
+      "figma_variant": null,
+      "description": "Pointer is held down on the component. Momentary active state.",
+      "entry_conditions": ["pointerdown fires while hovered and not disabled"],
+      "exit_conditions": ["pointerup fires", "pointer leaves while pressed"]
+    },
+    "disabled": {
+      "figma_variant": "State=Disabled",
+      "description": "Interaction is frozen. The component shows its checked value but ignores all user input.",
+      "entry_conditions": ["disabled prop is true"],
+      "exit_conditions": ["disabled prop becomes false"]
+    }
+  },
+
+  "state_machine": {
+    "initial": "rest",
+    "transitions": [
+      {
+        "from": "rest",
+        "to": "hovered",
+        "trigger": "pointer.enter",
+        "guard": "disabled is false"
+      },
+      {
+        "from": "hovered",
+        "to": "rest",
+        "trigger": "pointer.leave"
+      },
+      {
+        "from": "hovered",
+        "to": "pressed",
+        "trigger": "pointer.down",
+        "guard": "disabled is false"
+      },
+      {
+        "from": "pressed",
+        "to": "hovered",
+        "trigger": "pointer.up"
+      },
+      {
+        "from": "pressed",
+        "to": "rest",
+        "trigger": "pointer.leave"
+      },
+      {
+        "from": "rest",
+        "to": "focused",
+        "trigger": "keyboard.focus",
+        "guard": "disabled is false"
+      },
+      {
+        "from": "focused",
+        "to": "rest",
+        "trigger": "keyboard.blur"
+      },
+      {
+        "from": ["rest", "hovered", "focused", "pressed"],
+        "to": "disabled",
+        "trigger": "prop.disabled → true"
+      },
+      {
+        "from": "disabled",
+        "to": "rest",
+        "trigger": "prop.disabled → false"
+      }
+    ],
+    "toggle_action": {
+      "description": "Flips the checked value. Can originate from multiple triggers.",
+      "triggers": ["pointer.click", "keyboard.space", "keyboard.enter"],
+      "guard": "disabled is false",
+      "effect_uncontrolled": "internal checked state flips",
+      "effect_controlled": "onChange is called with new value; parent is responsible for updating checked prop",
+      "emits": "change"
+    }
+  },
+
+  "triggers": {
+    "pointer": {
+      "enter": {
+        "description": "Pointer moves onto the component.",
+        "effect": "transitions to hovered state if not disabled"
+      },
+      "leave": {
+        "description": "Pointer moves off the component.",
+        "effect": "transitions to rest state"
+      },
+      "down": {
+        "description": "Pointer button pressed while over component.",
+        "effect": "transitions to pressed state if not disabled"
+      },
+      "up": {
+        "description": "Pointer button released.",
+        "effect": "transitions back to hovered state"
+      },
+      "click": {
+        "description": "Full press-and-release cycle on the component.",
+        "effect": "invokes toggle action if not disabled"
+      }
+    },
+    "keyboard": {
+      "tab": {
+        "description": "Forward focus navigation.",
+        "effect": "moves focus to this component if it is next in tab order"
+      },
+      "shift_tab": {
+        "description": "Backward focus navigation.",
+        "effect": "moves focus to this component if it is previous in tab order"
+      },
+      "space": {
+        "description": "Primary activation key for switches.",
+        "effect": "invokes toggle action when focused and not disabled"
+      },
+      "enter": {
+        "description": "Secondary activation key.",
+        "effect": "invokes toggle action when focused and not disabled"
+      }
+    },
+    "touch": {
+      "tap": {
+        "description": "Single finger tap on a touch device.",
+        "effect": "equivalent to pointer.click — invokes toggle action if not disabled"
+      }
+    },
+    "resize": {
+      "description": "Component has a fixed intrinsic size and does not respond to container resize with any behavioral change.",
+      "breakpoint_behaviors": {}
+    },
+    "programmatic": {
+      "checked_prop_change": {
+        "description": "Parent updates the checked prop value.",
+        "effect": "thumb position updates to reflect new value; onChange is NOT called"
+      },
+      "disabled_prop_change": {
+        "description": "Parent updates the disabled prop value.",
+        "effect": "transitions to disabled state (true) or rest state (false)"
+      },
+      "focus_call": {
+        "description": "Imperative focus() call on the component's DOM node.",
+        "effect": "transitions to focused state if not disabled"
+      },
+      "blur_call": {
+        "description": "Imperative blur() call.",
+        "effect": "transitions to rest state"
+      }
+    }
+  },
+
+  "interactions": {
+    "toggle": {
+      "description": "The primary interaction — flips the switch between on and off.",
+      "initiated_by": ["pointer.click", "keyboard.space", "keyboard.enter", "touch.tap"],
+      "guard": "disabled is false",
+      "effect": "checked value inverts (true → false, false → true)",
+      "mode_uncontrolled": "component manages state internally",
+      "mode_controlled": "component calls onChange and waits for parent to update checked prop",
+      "emits": "change"
+    }
+  },
+
+  "emits": {
+    "change": {
+      "description": "Fired whenever the user performs a toggle interaction.",
+      "payload": {
+        "checked": "boolean — the new value after the toggle, not the previous value"
+      },
+      "not_emitted_when": [
+        "disabled is true",
+        "checked prop is changed programmatically by the parent",
+        "component re-renders without user interaction"
+      ]
+    }
+  },
+
+  "accessibility": {
+    "role": "switch",
+    "aria_attributes": {
+      "aria-checked": "mirrors checked value at all times (true | false)",
+      "aria-disabled": "mirrors disabled prop when true; omit attribute when false",
+      "aria-label": "required when no associated visible label exists",
+      "aria-labelledby": "alternative to aria-label — references an external label element"
+    },
+    "keyboard_navigation": {
+      "receives_focus": true,
+      "tab_stop": "always included in tab order unless disabled",
+      "space": "toggles",
+      "enter": "toggles"
+    },
+    "focus_management": {
+      "focus_visible": "a visible focus indicator must appear when focus arrives via keyboard",
+      "focus_trap": "none — focus is not trapped within the component",
+      "focus_on_disable": "if the component holds focus when disabled, focus moves to the next focusable element"
+    },
+    "screen_reader": {
+      "on_toggle": "the new state ('on' or 'off') must be announced immediately after toggle",
+      "on_disable": "state change to disabled should be announced if the component is currently focused"
+    }
+  },
+
+  "responsive": {
+    "description": "The Switch has a fixed intrinsic size. It does not adapt its layout or behavior based on container width or viewport breakpoints. No behavioral differences across sizes.",
+    "behaviors": {}
+  },
+
+  "composition": {
+    "parent_requirements": {
+      "description": "The Switch is a self-contained leaf component. It places no requirements on its parent beyond receiving the props defined above.",
+      "layout": "none — parent can place it anywhere",
+      "context": "none — does not consume any React context or provider by default",
+      "label_association": "parent is responsible for associating a visible label and passing aria-label or aria-labelledby"
+    },
+    "slots": {}
+  },
+
+  "constraints": {
+    "mutual_exclusions": [
+      {
+        "rule": "hovered and disabled are mutually exclusive states",
+        "reason": "a disabled switch cannot be interacted with, so a pointer over it must not produce the hovered appearance or behavior"
+      }
+    ],
+    "conditional_behaviors": [
+      {
+        "if": "disabled is true",
+        "then": "all pointer, keyboard, and touch triggers are suppressed; onChange is never called"
+      },
+      {
+        "if": "checked prop is provided by parent (controlled mode)",
+        "then": "the component must not manage its own checked state; it must always reflect the prop and call onChange to request a change"
+      },
+      {
+        "if": "defaultChecked is provided without a checked prop (uncontrolled mode)",
+        "then": "the component owns its checked state from mount onward; defaultChecked is read only once"
+      }
+    ],
+    "required_combinations": [
+      {
+        "rule": "at least one of aria-label or aria-labelledby must be present or a visible label must be associated",
+        "reason": "a switch without an accessible name is unusable by screen reader users"
+      }
+    ]
+  },
+
+  "scenarios": {
+    "user_toggles_on": "Switch is at rest with checked=false. User clicks or presses Space. onChange fires with checked=true. Thumb animates to the on position.",
+    "user_toggles_off": "Switch is at rest with checked=true. User clicks or presses Space. onChange fires with checked=false. Thumb animates to the off position.",
+    "keyboard_navigation": "User tabs to the switch. The focused state activates. User presses Space. Toggle fires. User tabs away. Focused state exits.",
+    "disabled_interaction_attempt": "Switch has disabled=true. User hovers, clicks, or presses Space. No state change occurs. onChange is not called.",
+    "controlled_update": "Parent receives onChange with checked=true and updates its state. Parent re-renders with checked=true. Switch reflects new value without emitting a second change event.",
+    "programmatic_disable_while_focused": "Switch has keyboard focus. Parent sets disabled=true. Focus moves to the next focusable element. Screen reader announces the change."
+  }
+}

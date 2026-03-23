@@ -1,137 +1,137 @@
 # Component Contract System
 
-This repository defines a formal behavioral contract format for React
-components used in AI-assisted development.
+A behavioral contract captures every event-driven, interaction-driven, and
+resize-driven behavior a component can exhibit — nothing more, nothing less.
 
-Instead of relying only on visual designs (Figma), each component
-includes a `behavior.yml` file that serves as a machine-readable
-assumption--guarantee contract.
+It sits between a Figma design and a code implementation. Both humans and AI
+agents read it before writing a single line. The goal is to reduce ambiguity,
+prevent hallucinated logic, and constrain AI agents to implement components
+within clearly defined behavioral boundaries.
 
-The goal is to reduce ambiguity, prevent hallucinated logic, and
-constrain AI agents to implement components within clearly defined
-behavioral boundaries.
+---
 
-------------------------------------------------------------------------
+## Getting started
 
-## What Is a Component Contract?
+```bash
+git clone <this-repo>
+cd Contracts
 
-A component contract formally defines:
+# 1. Set your Figma personal access token
+cp .env.example .env
+#    edit .env and set FIGMA_PAT=<your token>
 
--   **Assumptions** --- what the environment (developer / parent
-    component) must satisfy.
--   **Guarantees** --- what the component promises when assumptions
-    hold.
+# 2. Review project config
+#    edit config.yml — set your Figma file key and output preferences
 
-It is not documentation. It is an execution boundary for AI-generated
-code.
+# 3. Open the target Figma file in the Figma desktop app (required for MCP)
 
-------------------------------------------------------------------------
+# You're ready. See docs/AGENTS.md to extract your first contract.
+```
 
-## File Structure
+---
 
-Each component includes:
+## Project structure
 
-ComponentName/ ├── Component.tsx ├── styles.ts ├── behavior.yml └──
-README.md
+```
+.
+├── config.yml              Project config — MCP server, Figma file key, output paths
+├── .env.example            Template for environment variables (copy to .env)
+├── schema.json             JSON Schema for contract validation (in progress)
+│
+├── components/             One subdirectory per component
+│   └── switch/
+│       ├── contract.json   Behavioral contract in JSON
+│       └── contract.yml    Same contract in YAML
+│
+└── docs/                   Reference material for humans and agents
+    ├── AGENTS.md           How AI agents extract and write contracts
+    ├── context.md          Project philosophy and design decisions
+    ├── glossary.md         Every contract key defined
+    ├── limitations.md      What does NOT belong in a contract
+    ├── requirements.md     Validation checklist for a finished contract
+    └── dependencies.md     External systems this project depends on
+```
 
-`behavior.yml` is the source of truth for behavioral logic.
+---
 
-------------------------------------------------------------------------
+## What is a component contract?
 
-## Contract Sections
+A contract formally specifies:
 
-### 1. Assumptions
+- **Props** — behavioral inputs the consumer provides
+- **States** — every named UI state the component can occupy
+- **State machine** — which transitions between states are valid, and what triggers them
+- **Triggers** — every input source: pointer, keyboard, touch, resize, programmatic
+- **Interactions** — higher-level named operations (toggle, submit, expand…)
+- **Emits** — events fired outward and their payloads
+- **Accessibility** — ARIA role, keyboard nav, focus management, screen reader requirements
+- **Responsive** — behavioral (not visual) changes at different container sizes
+- **Composition** — what the parent must provide; named child slots
+- **Constraints** — mutual exclusions, conditional rules, required combinations
+- **Scenarios** — end-to-end named behavioral flows
 
-Defines environmental obligations:
+It is not documentation. It is an execution boundary — behavior is undefined
+if anything outside the contract is assumed.
 
--   Props (required / optional)
--   Prop constraints
--   Children rules
--   Controlled vs uncontrolled usage
--   External expectations
+---
 
-If assumptions are violated, behavior is undefined.
+## Reading a contract
 
-------------------------------------------------------------------------
+Open `components/<name>/contract.json` or `contract.yml`. Work through the
+top-level keys in order: `figma` → `description` → `props` → `states` →
+`state_machine` → `triggers` → `interactions` → `emits` → `accessibility` →
+`responsive` → `composition` → `constraints` → `scenarios`.
 
-### 2. Guarantees
+Each key is defined in full in `docs/glossary.md`.
 
-Defines component obligations:
+---
 
--   Rendering rules
--   Event emission rules
--   State behavior
--   Interaction restrictions
--   Accessibility behavior
+## Writing a new contract
 
-Guarantees only apply when assumptions are satisfied.
+1. Open the Figma file in the desktop app with Dev Mode enabled.
+2. The MCP server starts automatically at `http://127.0.0.1:3845/mcp`.
+3. Call `get_metadata` on the component set node to map all variants.
+4. Call `get_design_context` on each variant to extract conditional logic.
+5. Create `components/<name>/` and fill `contract.json` key by key.
+6. Translate to `contract.yml` — identical data, YAML format.
+7. Run through the checklist in `docs/requirements.md` before committing.
 
-------------------------------------------------------------------------
+For AI-assisted extraction, see `docs/AGENTS.md` for the full protocol.
 
-### 3. State Machine (Optional but Recommended)
+---
 
-Explicit states and transitions prevent ambiguous logic and improve AI
-determinism.
+## Design principles
 
-------------------------------------------------------------------------
+- Behavioral, not visual — no colors, sizes, or typography anywhere
+- Explicit over implicit — every state named, every transition guarded
+- Machine-readable first — structured for agent consumption
+- No hidden logic — if it is not in the contract, it does not exist
+- State clarity over convenience — ambiguous states are always split
 
-### 4. Refinements
+---
 
-Variants or extended components may:
+## Contract sections in depth
 
--   Strengthen assumptions
--   Strengthen guarantees
+| Section | Purpose |
+|---|---|
+| `props` | What the consumer controls. Only props with behavioral consequences. |
+| `states` | Named modes. Always includes `focused` and `pressed` even without Figma variants. |
+| `state_machine` | The formal transition graph. Every state must be reachable and escapable. |
+| `triggers` | Categorized by input type. All five categories present even if empty. |
+| `interactions` | Semantic operations that one or more triggers invoke. |
+| `emits` | Outward events with payloads and explicit suppression rules. |
+| `accessibility` | WAI-ARIA role, managed attributes, keyboard nav, focus, screen reader. |
+| `responsive` | Behavioral changes driven by size — not visual reflow. |
+| `composition` | Parent obligations and named child slots. |
+| `constraints` | Mutual exclusions, conditional if-then rules, required co-presence. |
+| `scenarios` | Prose flows. Minimum four: happy path, keyboard, disabled, controlled update. |
 
-This enables scalable contract inheritance.
+---
 
-------------------------------------------------------------------------
+## Future extensions
 
-### 5. Composition Rules
-
-Defines:
-
--   Parent overrides
--   Event propagation behavior
--   Nested component constraints
-
-Prevents unintended interaction conflicts.
-
-------------------------------------------------------------------------
-
-## Why This Exists
-
-AI agents generate code probabilistically.
-
-Contracts:
-
--   Constrain implementation space\
--   Reduce behavioral drift\
--   Improve consistency across components\
--   Enable contract-first design system governance
-
-This system shifts development from visual interpretation to formal
-behavioral execution.
-
-------------------------------------------------------------------------
-
-## Design Principles
-
--   Machine-readable first\
--   Explicit over implicit\
--   Deterministic interaction rules\
--   No hidden logic\
--   State clarity over convenience
-
-------------------------------------------------------------------------
-
-## Future Extensions
-
--   Schema validation
--   Contract linting
--   Automated test generation from guarantees
--   Contract diffing across versions
-
-------------------------------------------------------------------------
-
-This repository treats UI components as formally bounded systems --- not
-just styled React functions.
+- Schema validation (`schema.json` fully defined)
+- Contract linting CLI
+- Automated test generation from `state_machine` and `scenarios`
+- Contract diffing across versions
+- Multi-component composition contracts

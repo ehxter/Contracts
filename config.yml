@@ -1,0 +1,80 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Component Contract System — Project Config
+# ─────────────────────────────────────────────────────────────────────────────
+#
+# 1. Copy .env.example to .env and set FIGMA_PAT there.
+# 2. Edit the values below to match your project.
+# 3. Never commit a real token to version control.
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+# ─── Figma ───────────────────────────────────────────────────────────────────
+
+figma:
+  # URL of the local Figma Dev Mode MCP server.
+  # The Figma desktop app must be running with the target file open.
+  mcp_server_url: http://127.0.0.1:3845/mcp
+
+  # Your Figma personal access token.
+  # Preferably set this via the FIGMA_PAT environment variable in .env
+  # rather than writing it here directly.
+  personal_access_token: ${FIGMA_PAT}
+
+  # The key of the Figma file that contains your design system.
+  # Found in the file URL: figma.com/design/<file_key>/...
+  file_key: UZ1o5wMJ98CHMBMiwvBJlc
+
+  # Human-readable name of the design system (used in documentation only).
+  design_system_name: BaseCore
+
+
+# ─── Output ──────────────────────────────────────────────────────────────────
+
+output:
+  # Root directory where individual component contract folders are created.
+  # Each component gets its own subdirectory: components/<name>/contract.json
+  components_dir: ./components
+
+  # Which contract formats to generate. Options: json, yml
+  formats:
+    - json
+    - yml
+
+  # Path to the JSON Schema used to validate contract files.
+  schema_path: ./schema.json
+
+
+# ─── Agent behavior ──────────────────────────────────────────────────────────
+
+agent:
+  # Include states that exist behaviorally but have no Figma variant
+  # (e.g., focused, pressed). Set figma_variant to null for these.
+  include_states_without_figma_variant: true
+
+  # Value to use for figma_variant when a state has no Figma counterpart.
+  default_missing_figma_variant_value: null
+
+  # Always add a `focused` state even if Figma does not define one.
+  always_include_focused_state: true
+
+  # Always add a `pressed` state for components with click interactions.
+  always_include_pressed_state: true
+
+  # Minimum number of scenarios required in a valid contract.
+  minimum_scenarios: 4
+
+
+# ─── Documentation ───────────────────────────────────────────────────────────
+
+docs:
+  # Path to the agent guide. Agents read this before extracting contracts.
+  agents_guide: ./docs/AGENTS.md
+
+  # Path to the glossary. Referenced when filling in contract keys.
+  glossary: ./docs/glossary.md
+
+  # Path to the limitations guide. Checked before writing any value.
+  limitations: ./docs/limitations.md
+
+  # Path to the requirements checklist. Used to validate a finished contract.
+  requirements: ./docs/requirements.md
