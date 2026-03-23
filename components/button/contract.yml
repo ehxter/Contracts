@@ -1,0 +1,509 @@
+kind: component
+name: Button
+version: 1.0.0
+
+figma:
+  nodeId: "160:243"
+  pageId: "0:2"
+  pageName: Internal Only Canvas
+  componentSetId: "160:243"
+  variants:
+    - nodeId: "160:244"
+      label: "State=Enable"
+    - nodeId: "160:247"
+      label: "State=Hover"
+    - nodeId: "160:250"
+      label: "State=focus"
+  notes:
+    - Figma name is 'Inverse-button' — designed for use on dark/inverted backgrounds.
+    - >
+      The 'State=focus' variant uses the pressed-strength state layer, not the
+      hover-strength one. Focus receives a stronger visual affordance than hover.
+    - Pressed and Disabled states have no Figma variants. Both are required for a complete implementation.
+    - >
+      Icon Button (nodeId: 160:264) is a related but separate component —
+      icon-only, circular, no label.
+
+description: >
+  A low-emphasis ghost button used for the lowest-priority actions.
+  The container is invisible at rest and becomes visible only on interaction.
+  Designed for use on dark or inverted backgrounds. Supports a dynamic text
+  label and the standard click interaction.
+
+
+# ─── PROPS ────────────────────────────────────────────────────────────────────
+
+props:
+  label:
+    type: string
+    default: Action
+    figma_property: label
+    description: >
+      The visible text inside the button. Always rendered;
+      this component has no icon-only mode.
+
+  disabled:
+    type: boolean
+    default: false
+    figma_property: null
+    description: >
+      When true, suppresses all user interaction and removes the button
+      from the tab order. The button still renders its label.
+
+  type:
+    type: string
+    default: button
+    figma_property: null
+    description: >
+      Native HTML button type. 'submit' triggers the closest ancestor form
+      on activation. 'reset' resets the closest ancestor form. 'button' does neither.
+
+  onClick:
+    type: function
+    default: null
+    figma_property: null
+    description: >
+      Callback invoked when the user activates the button via click, Space,
+      or Enter. Not called when disabled.
+
+  aria-label:
+    type: string
+    default: null
+    figma_property: null
+    description: >
+      Overrides the label text as the accessible name. Use when the visible
+      label alone is insufficient for screen reader context.
+
+  aria-pressed:
+    type: "boolean | null"
+    default: null
+    figma_property: null
+    description: >
+      Expresses a toggle state when the button controls a persistent on/off
+      condition (e.g., a bold toggle in a text editor).
+      Omit if the button is not a toggle.
+
+  aria-expanded:
+    type: "boolean | null"
+    default: null
+    figma_property: null
+    description: >
+      Set to true or false when the button controls the visibility of another
+      element (e.g., a dropdown). Omit otherwise.
+
+  aria-controls:
+    type: "string | null"
+    default: null
+    figma_property: null
+    description: >
+      ID of the element this button controls.
+      Required when aria-expanded is used.
+
+
+# ─── STATES ───────────────────────────────────────────────────────────────────
+
+states:
+  rest:
+    figma_variant: "State=Enable"
+    description: Default idle state. Container is invisible; only the label is visible.
+    entry_conditions:
+      - component mounts
+      - pointer leaves the button
+      - keyboard focus is lost
+      - disabled prop becomes false
+    exit_conditions:
+      - pointer enters the button
+      - keyboard focus is received
+      - disabled prop becomes true
+
+  hovered:
+    figma_variant: "State=Hover"
+    description: >
+      Pointer is over the button. Container becomes visible with
+      a subtle state layer overlay.
+    entry_conditions:
+      - pointerenter fires and disabled is false
+    exit_conditions:
+      - pointerleave fires
+      - pointer is pressed (transitions to pressed)
+      - disabled prop becomes true
+
+  focused:
+    figma_variant: "State=focus"
+    description: >
+      Button has keyboard focus. Container becomes visible with a stronger
+      state layer overlay than hover. A visible focus indicator is also required.
+      Note: Figma uses the pressed-strength overlay for this state.
+    entry_conditions:
+      - tab or shift+tab navigates to this button
+      - programmatic focus() call
+      - pointer click that also gives focus (browser-dependent)
+    exit_conditions:
+      - blur fires
+      - tab or shift+tab moves focus away
+      - disabled prop becomes true
+
+  pressed:
+    figma_variant: null  # Not in Figma. Required for pointer and keyboard fidelity.
+    description: >
+      Button is being held down (pointer down or keyboard key held).
+      Momentary active state before release triggers the action.
+    entry_conditions:
+      - pointerdown fires while hovered and not disabled
+      - Space or Enter held down while focused and not disabled
+    exit_conditions:
+      - pointerup fires
+      - pointer leaves while pressed
+      - Space or Enter is released (activates the button)
+
+  disabled:
+    figma_variant: null  # Not in Figma. Required for a complete implementation.
+    description: >
+      All interaction is suppressed. Label remains visible.
+      The button is removed from the tab order and cannot be activated.
+    entry_conditions:
+      - disabled prop is true
+    exit_conditions:
+      - disabled prop becomes false
+
+
+# ─── STATE MACHINE ────────────────────────────────────────────────────────────
+
+state_machine:
+  initial: rest
+
+  transitions:
+    - from: rest
+      to: hovered
+      trigger: pointer.enter
+      guard: disabled is false
+
+    - from: hovered
+      to: rest
+      trigger: pointer.leave
+
+    - from: hovered
+      to: pressed
+      trigger: pointer.down
+      guard: disabled is false
+
+    - from: pressed
+      to: hovered
+      trigger: pointer.up
+      guard: pointer is still over the button
+
+    - from: pressed
+      to: rest
+      trigger: pointer.leave
+      guard: pointer leaves while button is held
+
+    - from: rest
+      to: focused
+      trigger: keyboard.focus
+      guard: disabled is false
+
+    - from: focused
+      to: rest
+      trigger: keyboard.blur
+
+    - from: focused
+      to: pressed
+      trigger: [keyboard.space.down, keyboard.enter.down]
+      guard: disabled is false
+
+    - from: pressed
+      to: focused
+      trigger: [keyboard.space.up, keyboard.enter.up]
+      note: Activation fires on key release, then state returns to focused
+
+    - from: [rest, hovered, focused, pressed]
+      to: disabled
+      trigger: "prop.disabled → true"
+
+    - from: disabled
+      to: rest
+      trigger: "prop.disabled → false"
+
+  activate_action:
+    description: The primary action. Fires when the user releases a click or keyboard key.
+    triggers:
+      - pointer.click
+      - keyboard.space.up
+      - keyboard.enter.up
+    guard: disabled is false
+    effects:
+      - calls onClick if provided
+      - "if type is 'submit': submits the closest ancestor <form>"
+      - "if type is 'reset': resets the closest ancestor <form>"
+    emits: click
+
+
+# ─── TRIGGERS ─────────────────────────────────────────────────────────────────
+
+triggers:
+  pointer:
+    enter:
+      description: Pointer moves onto the button.
+      effect: transitions to hovered if not disabled
+    leave:
+      description: Pointer moves off the button.
+      effect: transitions to rest; cancels any in-progress press
+    down:
+      description: Pointer button pressed over the button.
+      effect: transitions to pressed if not disabled
+    up:
+      description: Pointer button released.
+      effect: activates the button if released over it; transitions back to hovered or rest
+    click:
+      description: Full press-and-release over the button.
+      effect: invokes activate_action if not disabled
+
+  keyboard:
+    tab:
+      description: Forward focus navigation.
+      effect: moves focus to this button if next in tab order and not disabled
+    shift_tab:
+      description: Backward focus navigation.
+      effect: moves focus to this button if previous in tab order and not disabled
+    space:
+      description: Activates the button while focused. Fires on key-up.
+      effect: invokes activate_action on release if not disabled
+    enter:
+      description: Activates the button while focused. Fires on key-up.
+      effect: >
+        invokes activate_action on release if not disabled;
+        also submits the ancestor form if type='submit'
+    escape:
+      description: No inherent behavior on a plain button.
+      effect: none at the button level
+
+  touch:
+    tap:
+      description: Single-finger tap on the button.
+      effect: equivalent to pointer.click — invokes activate_action if not disabled
+    long_press:
+      description: No inherent behavior for a plain button.
+      effect: none unless parent context defines a long-press action
+
+  resize:
+    description: >
+      The button sizes to its content (label + padding). No behavioral change
+      occurs at any container breakpoint — the button does not collapse, truncate,
+      or change modes based on available space.
+    breakpoint_behaviors: {}
+
+  programmatic:
+    disabled_prop_change:
+      description: Parent sets disabled to true or false.
+      effect: transitions to disabled state or back to rest; removes from or restores tab order
+    label_prop_change:
+      description: Parent updates the label string.
+      effect: label text updates immediately; no state transition; no event emitted
+    focus_call:
+      description: Imperative focus() on the button's DOM node.
+      effect: transitions to focused state if not disabled
+    blur_call:
+      description: Imperative blur() on the button's DOM node.
+      effect: transitions to rest state
+    click_call:
+      description: Imperative .click() on the button's DOM node.
+      effect: >
+        invokes activate_action; behaves identically to a user click
+        including form submission
+
+
+# ─── INTERACTIONS ─────────────────────────────────────────────────────────────
+
+interactions:
+  activate:
+    description: The button's sole user-facing action — executes the associated operation.
+    initiated_by:
+      - pointer.click
+      - keyboard.space
+      - keyboard.enter
+      - touch.tap
+    guard: disabled is false
+    effects:
+      - calls onClick prop if provided
+      - "if type='submit': submits closest ancestor <form> and triggers form's submit event"
+      - "if type='reset': resets closest ancestor <form> fields to their default values"
+    emits: click
+    does_not:
+      - change any internal state value
+      - navigate unless onClick performs navigation
+      - toggle unless onClick manages a toggle externally
+
+
+# ─── EMITS ────────────────────────────────────────────────────────────────────
+
+emits:
+  click:
+    description: >
+      Fires when the user successfully activates the button. This is the
+      native DOM click event — consumers listen via the onClick prop.
+    payload:
+      event: MouseEvent or KeyboardEvent — the originating browser event
+    not_emitted_when:
+      - disabled is true
+      - pointer.down fires but pointer.up fires outside the button
+      - label prop is updated programmatically
+      - component re-renders without user interaction
+
+
+# ─── ACCESSIBILITY ────────────────────────────────────────────────────────────
+
+accessibility:
+  role: button
+  element: >
+    Use a native <button> element. Do not use <div role='button'> —
+    native buttons receive keyboard focus, form submission, and Space/Enter
+    activation for free.
+
+  aria_attributes:
+    aria-label: >
+      overrides the label text as the accessible name when provided;
+      use when visible label is ambiguous in context
+    aria-disabled: >
+      set to 'true' when disabled; prefer the native disabled attribute
+      on <button> for automatic tab order removal
+    aria-pressed: >
+      present only when the button controls a binary on/off state;
+      value reflects current toggle state (true | false)
+    aria-expanded: >
+      present only when the button controls the visibility of another region;
+      value reflects whether that region is open (true | false)
+    aria-controls: >
+      required alongside aria-expanded; references the ID of the controlled region
+
+  keyboard_navigation:
+    receives_focus: true
+    tab_stop: included in tab order when not disabled; removed when disabled
+    space: activates on key-up
+    enter: "activates on key-up; also submits the ancestor form if type='submit'"
+    escape: no built-in behavior; parent containers intercept if needed
+
+  focus_management:
+    focus_visible: >
+      A visible focus ring must appear when focus arrives via keyboard.
+      Must not appear on pointer click in browsers that support :focus-visible.
+    focus_trap: none — focus passes through normally
+    focus_on_disable: >
+      If the button holds focus when disabled, the browser moves focus to
+      the next focusable element. Do not call blur() explicitly.
+    focus_after_action: >
+      Focus remains on the button after activation unless onClick explicitly
+      moves it (e.g., opening a dialog that traps focus).
+
+  screen_reader:
+    on_activate: the accessible name (label or aria-label) is announced; role 'button' is announced
+    on_disable: "'dimmed' or 'unavailable' is announced depending on the reader"
+    on_aria_expanded_change: the new expanded state ('collapsed' or 'expanded') is announced
+
+
+# ─── RESPONSIVE ───────────────────────────────────────────────────────────────
+
+responsive:
+  description: >
+    The button sizes to its content (label + padding). It does not change
+    behavioral mode at any viewport or container size. No collapse, truncation,
+    or mode-switch behavior is defined.
+  breakpoint_behaviors: {}
+
+
+# ─── COMPOSITION ──────────────────────────────────────────────────────────────
+
+composition:
+  parent_requirements:
+    description: The Button is a leaf component. It places no structural requirements on its parent.
+    layout: none — parent can place it anywhere; inline, flex, grid all work
+    context: none — does not consume any context or provider
+    form_association: >
+      If type='submit' or type='reset', the button must be a descendant of a
+      <form> element or use the HTML 'form' attribute to associate with a form by ID.
+    label_association: >
+      The label prop provides the accessible name directly; no external label
+      element is required unless aria-labelledby is used instead.
+
+  slots: {}
+
+
+# ─── CONSTRAINTS ──────────────────────────────────────────────────────────────
+
+constraints:
+  mutual_exclusions:
+    - rule: hovered and disabled are mutually exclusive
+      reason: >
+        A disabled button cannot be interacted with; pointer presence must not
+        produce the hovered visual or trigger any action.
+
+    - rule: aria-pressed and type='submit' should not coexist
+      reason: >
+        A submit button performs a one-shot action; toggle semantics (aria-pressed)
+        apply to persistent binary states and conflict with submit behavior.
+
+  conditional_behaviors:
+    - if: disabled is true
+      then: >
+        All pointer, keyboard, and touch triggers are suppressed;
+        onClick is never called; form submission does not occur.
+
+    - if: "type is 'submit'"
+      then: >
+        Pressing Enter while the button is focused also submits the form
+        (in addition to Space); the form's own validation and submit handler
+        fire first.
+
+    - if: "type is 'reset'"
+      then: >
+        Activation resets all form fields to their defaultValue; this cannot
+        be prevented by onClick returning false — use a custom handler to intercept.
+
+    - if: aria-expanded is provided
+      then: >
+        aria-controls must also be provided with a valid element ID;
+        the button is responsible for updating aria-expanded when the
+        controlled region opens or closes.
+
+  required_combinations:
+    - rule: aria-expanded requires aria-controls
+      reason: >
+        Screen readers use aria-controls to announce which element is being
+        expanded; without it, the expanded state is announced with no associated target.
+
+
+# ─── SCENARIOS ────────────────────────────────────────────────────────────────
+
+scenarios:
+  user_clicks: >
+    Button is at rest. User moves pointer over it — container becomes visible
+    (hovered). User presses and holds — pressed state activates. User releases
+    — activate_action fires, onClick is called, click event emits.
+    State returns to hovered.
+
+  keyboard_activation: >
+    User tabs to the button. Focused state activates with stronger container
+    visibility and a focus ring. User presses Space. Pressed state activates
+    momentarily. User releases Space. activate_action fires, onClick is called.
+    State returns to focused.
+
+  form_submission: >
+    Button has type='submit'. User presses Enter while focused.
+    Form validation runs. If valid, form submit event fires. onClick is also called.
+    Button remains focused.
+
+  disabled_attempt: >
+    Button has disabled=true. User hovers, clicks, or presses Space.
+    No state change. No visual response. onClick is not called.
+    Tab skips over the button.
+
+  toggle_button: >
+    Button has aria-pressed=false. User clicks. onClick fires. Parent updates
+    aria-pressed to true. Screen reader announces 'pressed'. User clicks again.
+    onClick fires. Parent updates aria-pressed to false.
+    Screen reader announces 'not pressed'.
+
+  controls_dropdown: >
+    Button has aria-expanded=false and aria-controls='menu-id'. User clicks.
+    onClick fires. Parent opens the dropdown and sets aria-expanded=true.
+    Screen reader announces 'expanded'. User presses Escape inside the dropdown.
+    Parent closes dropdown, sets aria-expanded=false, and returns focus to this button.
