@@ -76,6 +76,28 @@ Accept: application/json, text/event-stream
 
 ---
 
+### Resolving a component's Figma source
+
+Before calling either provider, look up the component in `figma-registry.yml`:
+
+1. Read the registry — find the entry where `name` matches the component directory name.
+2. The entry gives you `url`, `file_key`, `node_id`, and `page_id` directly.
+3. If `file_key` or `node_id` are missing, derive them from the `url` field:
+
+```
+URL:      https://www.figma.com/design/UZ1o5wMJ98CHMBMiwvBJlc/BaseCore?node-id=101-78
+file_key: segment after /design/                       → UZ1o5wMJ98CHMBMiwvBJlc
+node_id:  node-id query param, replace - with :        → 101:78
+```
+
+**Node ID formats:**
+- MCP uses colon format: `101:78` — use as-is from registry
+- REST API uses hyphen format: `101-78` — convert from registry value by replacing `:` with `-`
+
+Never guess node IDs. The registry is the only lookup source.
+
+---
+
 ### Option B — Figma REST API (headless, no desktop app required)
 
 Use this when running in CI/CD or any environment without the Figma desktop app.
@@ -87,19 +109,14 @@ Base URL from `config.yml → figma.api_base_url`: `https://api.figma.com/v1`
 GET https://api.figma.com/v1/files/{file_key}
 X-Figma-Token: <FIGMA_PAT>
 
-# Get specific nodes by ID
-GET https://api.figma.com/v1/files/{file_key}/nodes?ids={node_id_1},{node_id_2}
+# Get specific nodes by ID (hyphen format)
+GET https://api.figma.com/v1/files/{file_key}/nodes?ids={node_id_hyphen}
 X-Figma-Token: <FIGMA_PAT>
 
 # Get rendered image of a node
-GET https://api.figma.com/v1/images/{file_key}?ids={node_id}&format=png
+GET https://api.figma.com/v1/images/{file_key}?ids={node_id_hyphen}&format=png
 X-Figma-Token: <FIGMA_PAT>
 ```
-
-**Node ID format:** REST API uses hyphens (`101-78`); MCP and Figma URLs use colons (`101:78`).
-Convert by replacing `:` with `-` before REST calls.
-
-**Node ID source:** always read `figma.nodeId` from the contract — never guess.
 
 ---
 

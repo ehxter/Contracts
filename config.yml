@@ -24,13 +24,9 @@ figma:
   # Set this via FIGMA_PAT in .env — never write it here directly.
   personal_access_token: ${FIGMA_PAT}
 
-  # The key of the Figma file that contains your design system.
-  # Found in the file URL: figma.com/design/<file_key>/...
-  # Can be overridden per-session via FIGMA_FILE_KEY in .env.
-  file_key: ${FIGMA_FILE_KEY:-UZ1o5wMJ98CHMBMiwvBJlc}
-
-  # Human-readable name of the design system (used in documentation only).
-  design_system_name: BaseCore
+  # Component-to-Figma mapping. Each entry has a name that matches a directory
+  # under components/. Agents resolve Figma sources by name — no file reads needed.
+  registry: ./figma-registry.yml
 
 
 # ─── Codebase ────────────────────────────────────────────────────────────────

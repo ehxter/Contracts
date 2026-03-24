@@ -1,0 +1,57 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Figma Registry
+# ─────────────────────────────────────────────────────────────────────────────
+# Maps every component to its Figma source.
+#
+# ADDING A COMPONENT — paste the Figma URL and fill in name and description.
+# file_key and node_id are derived from the URL automatically (see rules below).
+# You never need to extract them manually.
+#
+# ─── Fields ──────────────────────────────────────────────────────────────────
+#
+# name         Required. Must match the directory name under components/ exactly.
+#              This is the only coupling — agents link components/<name> to a
+#              Figma source by matching the name field. No file reads required.
+#
+# url          The Figma URL for this component (node-level or file-level).
+#              Paste directly from the Figma desktop app or browser.
+#              Accepted formats:
+#                figma.com/design/{file_key}/{title}?node-id={node-id}
+#                figma.com/design/{file_key}/{title}         ← file-level, no node
+#
+# file_key     Derived from url: the path segment after /design/.
+#              Set explicitly only if you have no URL.
+#
+# node_id      Derived from url: the node-id query param with hyphens → colons.
+#              e.g. ?node-id=101-78  →  node_id: "101:78"
+#              Set explicitly only if you have no URL.
+#              For REST API calls, convert back: colon → hyphen.
+#
+# page_id      The canvas page node ID. Used to scope MCP get_metadata calls.
+#              Not in the URL — check Figma or leave blank if unknown.
+#
+# description  Human-readable label. Not used for linking.
+#
+# ─── URL parsing rules (for agents) ─────────────────────────────────────────
+#
+#   Given: https://www.figma.com/design/UZ1o5wMJ98CHMBMiwvBJlc/BaseCore?node-id=101-78
+#   file_key  = path segment after /design/          → UZ1o5wMJ98CHMBMiwvBJlc
+#   node_id   = node-id query param, replace - with : → 101:78
+#
+# ─────────────────────────────────────────────────────────────────────────────
+
+components:
+
+  - name: switch
+    url: https://www.figma.com/design/UZ1o5wMJ98CHMBMiwvBJlc/BaseCore?node-id=101-78
+    file_key: UZ1o5wMJ98CHMBMiwvBJlc   # derived from url
+    node_id: "101:78"                   # derived from url (101-78 → 101:78)
+    page_id: "0:2"
+    description: Toggle input — on/off with disabled state
+
+  - name: button
+    url: https://www.figma.com/design/UZ1o5wMJ98CHMBMiwvBJlc/BaseCore?node-id=160-243
+    file_key: UZ1o5wMJ98CHMBMiwvBJlc   # derived from url
+    node_id: "160:243"                  # derived from url (160-243 → 160:243)
+    page_id: "0:2"
+    description: Action trigger — enabled, hover, focus, disabled states

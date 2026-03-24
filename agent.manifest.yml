@@ -65,8 +65,27 @@ context_sources:
     auth:
       token_env_var: FIGMA_PAT
       token_header: X-Figma-Token   # used by REST API; MCP uses session negotiation
-    node_id_source: >
-      Each contract has a figma.nodeId field. Always use this — never guess node IDs.
+
+    # ── Resolving a component's Figma source ───────────────────────────────
+    registry:
+      file: ./figma-registry.yml
+      lookup: >
+        To find the Figma source for a component, read figma-registry.yml and
+        find the entry where name == <component-directory-name>.
+        The name field matches components/<name> exactly — no file reads needed.
+        The entry gives you: url, file_key, node_id, page_id.
+      url_parsing: >
+        If file_key or node_id are absent, derive them from the url field:
+          url:      https://www.figma.com/design/{file_key}/{title}?node-id={node-id-hyphen}
+          file_key: path segment after /design/
+          node_id:  node-id query param with hyphens replaced by colons (101-78 → 101:78)
+      node_id_formats:
+        mcp:      colon format — 101:78   (use as-is)
+        rest_api: hyphen format — 101-78  (convert from colon: replace : with -)
+      adding_a_component: >
+        Paste the Figma URL into a new entry in figma-registry.yml.
+        Set name to match the components/ directory. file_key and node_id
+        are derived from the URL — no manual extraction required.
 
     providers:
 
@@ -76,10 +95,10 @@ context_sources:
         url: config.yml → figma.mcp_server_url          # default http://127.0.0.1:3845/mcp
         auth: none — session token is negotiated per-request (see docs/agents.md)
         tools:
-          get_metadata:      First pass — discover nodes, variants, hierarchy
+          get_metadata:       First pass — discover nodes, variants, hierarchy
           get_design_context: Per-variant — extract rendered logic and conditional classes
-          get_screenshot:    Visual confirmation only — do not extract pixel values
-          get_variable_defs: Design tokens — read names only, not raw values
+          get_screenshot:     Visual confirmation only — do not extract pixel values
+          get_variable_defs:  Design tokens — read names only, not raw values
         initialization: |
           POST /mcp   Content-Type: application/json   Accept: application/json, text/event-stream
           Body: { "jsonrpc":"2.0","id":1,"method":"initialize",
@@ -94,15 +113,11 @@ context_sources:
         when: CI/CD, automation, headless environments without Figma desktop
         base_url: config.yml → figma.api_base_url        # https://api.figma.com/v1
         auth: header X-Figma-Token = ${FIGMA_PAT}
-        file_key: config.yml → figma.file_key            # or override via FIGMA_FILE_KEY in .env
+        file_key: from figma-registry.yml entry for the target component
         endpoints:
           get_file:   GET /v1/files/{file_key}
-          get_nodes:  GET /v1/files/{file_key}/nodes?ids={comma_separated_node_ids}
-          get_images: GET /v1/images/{file_key}?ids={node_ids}&format=png
-        node_id_format: >
-          Figma REST API uses hyphenated node IDs (e.g. 101-78).
-          Figma MCP and URLs use colon format (101:78).
-          Convert: replace : with - for REST API calls.
+          get_nodes:  GET /v1/files/{file_key}/nodes?ids={node_id_hyphen}
+          get_images: GET /v1/images/{file_key}?ids={node_id_hyphen}&format=png
 
   # Priority 3 — read before writing any code
   codebase:

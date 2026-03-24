@@ -41,7 +41,8 @@ cp .env.example .env
 ```
 .
 ├── agent.manifest.yml      Agent entry point — read this first on a fresh clone
-├── config.yml              Runtime config — MCP URL, Figma file key, codebase path
+├── figma-registry.yml      Component → Figma mapping (paste URLs here, name links to components/)
+├── config.yml              Runtime config — MCP URL, API base URL, codebase path
 ├── .env.example            Secret template — copy to .env and fill in values
 ├── schema.json             JSON Schema for contract validation (in progress)
 │
