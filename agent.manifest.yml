@@ -1,0 +1,272 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# AGENT MANIFEST — Component Contract System
+# ═══════════════════════════════════════════════════════════════════════════════
+# Read this file first — before config.yml, before any contract, before any code.
+# It defines who you are, what you do, and how to reach every context source.
+# Runtime values (URLs, keys, paths) are in config.yml.
+
+name: component-contract-agent
+version: 1.0.0
+
+
+# ─── What This Repo Is ─────────────────────────────────────────────────────────
+
+purpose: >
+  A structured store of behavioral contracts — one per UI component. Each
+  contract defines every state, trigger, interaction, and constraint a component
+  can exhibit. Contracts are technology-agnostic and framework-agnostic. They sit
+  between a Figma design and a code implementation and serve as the single source
+  of behavioral truth for both humans and AI agents.
+
+# ─── Your Two Modes ────────────────────────────────────────────────────────────
+
+modes:
+
+  extract:
+    goal: Read a Figma component → write a behavioral contract
+    trigger: A component exists in Figma but has no entry in components/
+    output: components/<name>/contract.json and components/<name>/contract.yml
+
+  build:
+    goal: Read a contract + design + codebase → write or update component code
+    trigger: A contract exists and needs to be implemented or updated in a codebase
+    output: Component source file(s) in the target codebase
+
+
+# ─── Context Sources ────────────────────────────────────────────────────────────
+
+context_sources:
+
+  # Priority 1 — always read first
+  contracts:
+    role: behavioral_spec
+    description: >
+      JSON/YAML files that define every behavioral detail of a component.
+      This is the highest-priority source. It defines what must be true in code.
+      If a behavior is not in the contract, it does not exist.
+    location: ./components/<name>/contract.json
+    auth: none
+    reading_order: >
+      figma → description → props → states → state_machine → triggers →
+      interactions → emits → accessibility → responsive → composition →
+      constraints → scenarios
+    key_rules:
+      - Populated keys are requirements — implement all of them
+      - Empty keys ({} or []) were considered and are non-applicable — do not skip them
+      - null values are intentionally absent (e.g. figma_variant: null for inferred states)
+
+  # Priority 2 — visual reference only
+  design:
+    role: visual_reference
+    description: >
+      Figma is used to confirm component structure, variant mapping, and slot
+      hierarchy. It is not a source of dimensions, colors, or typography.
+      Extract behavioral signal only.
+    auth:
+      token_env_var: FIGMA_PAT
+      token_header: X-Figma-Token   # used by REST API; MCP uses session negotiation
+    node_id_source: >
+      Each contract has a figma.nodeId field. Always use this — never guess node IDs.
+
+    providers:
+
+      figma_mcp:
+        when: local development, interactive agent sessions
+        requires: Figma desktop app open with the target file as the active tab
+        url: config.yml → figma.mcp_server_url          # default http://127.0.0.1:3845/mcp
+        auth: none — session token is negotiated per-request (see docs/agents.md)
+        tools:
+          get_metadata:      First pass — discover nodes, variants, hierarchy
+          get_design_context: Per-variant — extract rendered logic and conditional classes
+          get_screenshot:    Visual confirmation only — do not extract pixel values
+          get_variable_defs: Design tokens — read names only, not raw values
+        initialization: |
+          POST /mcp   Content-Type: application/json   Accept: application/json, text/event-stream
+          Body: { "jsonrpc":"2.0","id":1,"method":"initialize",
+                  "params":{ "protocolVersion":"2024-11-05","capabilities":{},
+                             "clientInfo":{"name":"agent","version":"1.0"} } }
+          → Capture mcp-session-id from response headers
+          → POST notifications/initialized with same header
+          → Include mcp-session-id on every subsequent request
+          Full protocol: docs/agents.md
+
+      figma_api:
+        when: CI/CD, automation, headless environments without Figma desktop
+        base_url: config.yml → figma.api_base_url        # https://api.figma.com/v1
+        auth: header X-Figma-Token = ${FIGMA_PAT}
+        file_key: config.yml → figma.file_key            # or override via FIGMA_FILE_KEY in .env
+        endpoints:
+          get_file:   GET /v1/files/{file_key}
+          get_nodes:  GET /v1/files/{file_key}/nodes?ids={comma_separated_node_ids}
+          get_images: GET /v1/images/{file_key}?ids={node_ids}&format=png
+        node_id_format: >
+          Figma REST API uses hyphenated node IDs (e.g. 101-78).
+          Figma MCP and URLs use colon format (101:78).
+          Convert: replace : with - for REST API calls.
+
+  # Priority 3 — read before writing any code
+  codebase:
+    role: implementation_target
+    description: >
+      The application or design system repository where the component will be
+      written or updated. Must be read before writing any code. Never assume
+      a framework, styling system, or token format.
+    path: config.yml → codebase.path                     # set CODEBASE_PATH in .env
+    auth: none — local filesystem access
+    read_before_writing: true
+    what_to_discover:
+      framework:        React, Vue, Svelte, Angular, Web Components, etc.
+      styling_system:   Tailwind, CSS Modules, styled-components, Sass, etc.
+      token_location:   tokens.json, theme.ts, CSS custom properties, style-dictionary
+      component_pattern: File structure, naming conventions, export style
+      state_management: Props-only, context/provide, store (Zustand, Pinia, etc.)
+      existing_components: Components that overlap with the one being built — reuse first
+      test_conventions: Test file location and format (if contract scenarios need stubs)
+    never_assume: >
+      A wrong assumption about framework or tokens silently produces invalid code.
+      Read the codebase. Then write.
+
+
+# ─── Extract Workflow (Figma → Contract) ───────────────────────────────────────
+
+extract_workflow:
+  description: Use this workflow when writing a new contract from a Figma component.
+
+  steps:
+    - step: 1
+      name: discover_pages
+      action: Call get_metadata with page node IDs (0:1, 0:2, …) until the component set is found
+      signal: Frames containing <symbol> children are component sets
+
+    - step: 2
+      name: map_variant_matrix
+      action: Read each variant name — format is "Property=Value, Property=Value"
+      output: >
+        Unique property names → props list
+        Unique values per property → states list
+
+    - step: 3
+      name: read_each_variant
+      action: Call get_design_context on each variant node
+      read_for:
+        - Conditional class names confirming state-driven changes
+        - Prop names and types confirming the prop API
+        - Position or alignment shifts indicating value communicated through layout
+        - Boolean guards (isHovered && propX) revealing state × prop intersections
+
+    - step: 4
+      name: infer_missing_states
+      action: Add focused and pressed even if absent from Figma
+      reason: >
+        Figma omits states with no visual difference. Focused is always required
+        for keyboard accessibility. Pressed is always required for pointer fidelity.
+      mark_as: figma_variant: null
+
+    - step: 5
+      name: fill_contract
+      action: Write components/<name>/contract.json key by key in order
+      rules:
+        - Every top-level key must be present even if its value is {} or []
+        - Write behavior in plain English, present tense
+        - No CSS classes, no Tailwind utilities, no pixel values anywhere
+
+    - step: 6
+      name: translate_to_yaml
+      action: Write components/<name>/contract.yml — identical content, YAML format
+
+    - step: 7
+      name: validate
+      action: Run through docs/requirements.md checklist before committing
+
+
+# ─── Build Workflow (Contract + Design + Codebase → Code) ──────────────────────
+
+build_workflow:
+  description: Use this workflow when implementing or updating a component from a contract.
+
+  steps:
+    - step: 1
+      name: read_contract
+      action: Read components/<name>/contract.json fully before doing anything else
+      extract: [props, states, state_machine, triggers, interactions, emits, accessibility, composition, constraints]
+
+    - step: 2
+      name: read_codebase
+      action: Explore CODEBASE_PATH — discover framework, tokens, patterns, existing components
+      gate: Must complete before writing any code
+
+    - step: 3
+      name: fetch_design
+      action: Use contract.figma.nodeId to call MCP or REST API
+      extract: Variant structure and slot hierarchy only — no values
+
+    - step: 4
+      name: implement
+      implementation_requirements:
+        states: >
+          Every state in state_machine must be representable — via CSS class,
+          data-attribute, or framework variant prop
+        triggers: >
+          Every trigger must be wired to the correct handler
+          (pointer.click, keyboard.space, programmatic prop change, etc.)
+        emits: >
+          Every emit must fire with the exact payload defined in contract.emits.
+          Suppression rules in not_emitted_when must be enforced in code.
+        accessibility: >
+          Every aria-* attribute must be dynamically bound to live state.
+          Every keyboard shortcut in keyboard_navigation must be bound.
+        composition: >
+          Every slot in composition.slots must exist as a named slot or children prop.
+          Parent requirements in composition.parent must be documented in component API.
+        constraints: >
+          Every rule in constraints must be enforced in logic — not just visually.
+          Mutual exclusions and disabled suppression are not optional.
+        tokens: >
+          Use codebase design tokens for all visual values.
+          Never hard-code a color, size, spacing value, or font property from Figma.
+
+    - step: 5
+      name: validate
+      checklist:
+        - Each state has a detectable representation in the DOM or component tree
+        - Each state transition in state_machine is reachable by the defined trigger
+        - Each emit fires (and is suppressed) exactly as documented
+        - Each aria-* attribute reflects live state dynamically
+        - Keyboard shortcuts in accessibility.keyboard_navigation are all bound
+        - Disabled state fully suppresses every trigger listed in constraints
+        - No undocumented behavior was added
+
+
+# ─── Hard Rules ─────────────────────────────────────────────────────────────────
+
+rules:
+  must:
+    - Read the contract before doing anything else
+    - Read the codebase before writing any code
+    - Implement every populated contract key without exception
+    - Respect all constraints and mutual_exclusions exactly as written
+    - Apply all accessibility requirements — they are behavioral, not cosmetic
+
+  must_not:
+    - Hard-code colors, sizes, spacing, or typography from Figma
+    - Add behavior the contract does not define
+    - Invent props or states not present in the contract
+    - Treat empty contract keys as unread — {} means non-applicable, not skipped
+    - Assume a framework, styling system, or token format without reading the codebase
+
+
+# ─── File Map ───────────────────────────────────────────────────────────────────
+
+files:
+  manifest:      ./agent.manifest.yml          # this file — read first
+  config:        ./config.yml                  # runtime values: URLs, keys, paths
+  env_template:  ./.env.example                # copy to .env, fill in secrets
+  schema:        ./schema.json                 # contract validation schema (pending)
+  contracts:     ./components/<name>/contract.{json,yml}
+  docs:
+    agents:      ./docs/agents.md              # MCP protocol, extraction steps, common mistakes
+    context:     ./docs/context.md             # project philosophy
+    glossary:    ./docs/glossary.md            # every contract key defined
+    limitations: ./docs/limitations.md         # what does not belong in a contract
+    requirements: ./docs/requirements.md       # validation checklist
+    dependencies: ./docs/dependencies.md       # external systems

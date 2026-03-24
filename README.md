@@ -16,16 +16,22 @@ within clearly defined behavioral boundaries.
 git clone <this-repo>
 cd Contracts
 
-# 1. Set your Figma personal access token
+# 1. Configure secrets and local paths
 cp .env.example .env
-#    edit .env and set FIGMA_PAT=<your token>
+#    set FIGMA_PAT       — your Figma personal access token
+#    set FIGMA_FILE_KEY  — key from your Figma file URL (overrides config.yml default)
+#    set CODEBASE_PATH   — absolute path to the codebase where components will be built
 
 # 2. Review project config
-#    edit config.yml — set your Figma file key and output preferences
+#    edit config.yml — Figma file key, codebase framework/styling hints, output paths
 
-# 3. Open the target Figma file in the Figma desktop app (required for MCP)
+# 3. Read the agent manifest
+#    cat agent.manifest.yml — full operating guide for any AI agent starting cold
 
-# You're ready. See docs/AGENTS.md to extract your first contract.
+# 4. To extract contracts from Figma: open the target file in the Figma desktop app
+#    The MCP server starts automatically at http://127.0.0.1:3845/mcp
+
+# 5. To build components from contracts: point CODEBASE_PATH at your target repo
 ```
 
 ---
@@ -34,17 +40,21 @@ cp .env.example .env
 
 ```
 .
-├── config.yml              Project config — MCP server, Figma file key, output paths
-├── .env.example            Template for environment variables (copy to .env)
+├── agent.manifest.yml      Agent entry point — read this first on a fresh clone
+├── config.yml              Runtime config — MCP URL, Figma file key, codebase path
+├── .env.example            Secret template — copy to .env and fill in values
 ├── schema.json             JSON Schema for contract validation (in progress)
 │
 ├── components/             One subdirectory per component
-│   └── switch/
-│       ├── contract.json   Behavioral contract in JSON
-│       └── contract.yml    Same contract in YAML
+│   ├── switch/
+│   │   ├── contract.json   Behavioral contract in JSON
+│   │   └── contract.yml    Same contract in YAML
+│   └── button/
+│       ├── contract.json
+│       └── contract.yml
 │
 └── docs/                   Reference material for humans and agents
-    ├── AGENTS.md           How AI agents extract and write contracts
+    ├── agents.md           MCP protocol, extraction steps, common mistakes
     ├── context.md          Project philosophy and design decisions
     ├── glossary.md         Every contract key defined
     ├── limitations.md      What does NOT belong in a contract
@@ -96,7 +106,8 @@ Each key is defined in full in `docs/glossary.md`.
 6. Translate to `contract.yml` — identical data, YAML format.
 7. Run through the checklist in `docs/requirements.md` before committing.
 
-For AI-assisted extraction, see `docs/AGENTS.md` for the full protocol.
+For AI-assisted extraction, see `docs/agents.md` for the MCP protocol details.
+For building components from contracts, see `agent.manifest.yml` for the full workflow.
 
 ---
 

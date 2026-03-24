@@ -1,26 +1,42 @@
 # Agent Guide — Component Behavioral Contracts
 
-This file is the operational manual for AI agents working with component
-contracts. Read this before reading or writing any contract file.
+This file is the operational manual for AI agents working with component contracts.
+Read `agent.manifest.yml` first for the full operating guide, then return here for
+detailed protocol steps.
 
 ---
 
 ## Your role
 
-You extract behavioral intent from Figma components and encode it as a
-structured contract. You are not implementing the component. You are not
-describing its appearance. You are documenting what it *does* in response to
-events, actions, and size changes.
+You have two modes:
+
+- **Extract** — read a Figma component, write a behavioral contract
+- **Build** — read a contract + design + codebase, implement the component in code
+
+Both modes are fully specified in `agent.manifest.yml`. This file covers the
+lower-level details: MCP session protocol, Figma REST API calls, codebase discovery,
+and extraction rules.
 
 ---
 
-## Connecting to the Figma MCP server
+## Context sources
 
-The Figma Dev Mode MCP server runs locally:
+This project uses three context sources in priority order:
 
-```
-http://127.0.0.1:3845/mcp
-```
+| Priority | Source | Role |
+|---|---|---|
+| 1 | `components/<name>/contract.json` | Behavioral spec — source of truth |
+| 2 | Figma (MCP or REST API) | Visual reference — structure and variants only |
+| 3 | Target codebase (`CODEBASE_PATH`) | Implementation target — read before writing |
+
+---
+
+## Connecting to Figma
+
+### Option A — MCP server (local, requires Figma desktop app)
+
+URL from `config.yml → figma.mcp_server_url` (default: `http://127.0.0.1:3845/mcp`).
+The Figma desktop app must be open with the target file as the active tab.
 
 ### Session initialization (required before every tool call)
 
@@ -49,7 +65,7 @@ Accept: application/json, text/event-stream
 { "jsonrpc": "2.0", "method": "notifications/initialized", "params": {} }
 ```
 
-### Available tools
+### Available MCP tools
 
 | Tool | When to use |
 |---|---|
@@ -57,6 +73,50 @@ Accept: application/json, text/event-stream
 | `get_design_context` | For each variant — extract rendered code and behavioral logic |
 | `get_variable_defs` | Extract design tokens (colors, spacing) — use only for naming, not values |
 | `get_screenshot` | Verify visual interpretation; do not extract pixel values from it |
+
+---
+
+### Option B — Figma REST API (headless, no desktop app required)
+
+Use this when running in CI/CD or any environment without the Figma desktop app.
+Auth: `X-Figma-Token: <FIGMA_PAT>` header on every request.
+Base URL from `config.yml → figma.api_base_url`: `https://api.figma.com/v1`
+
+```http
+# Get full file tree
+GET https://api.figma.com/v1/files/{file_key}
+X-Figma-Token: <FIGMA_PAT>
+
+# Get specific nodes by ID
+GET https://api.figma.com/v1/files/{file_key}/nodes?ids={node_id_1},{node_id_2}
+X-Figma-Token: <FIGMA_PAT>
+
+# Get rendered image of a node
+GET https://api.figma.com/v1/images/{file_key}?ids={node_id}&format=png
+X-Figma-Token: <FIGMA_PAT>
+```
+
+**Node ID format:** REST API uses hyphens (`101-78`); MCP and Figma URLs use colons (`101:78`).
+Convert by replacing `:` with `-` before REST calls.
+
+**Node ID source:** always read `figma.nodeId` from the contract — never guess.
+
+---
+
+## Reading the target codebase
+
+Before writing any component code, explore `CODEBASE_PATH` to discover:
+
+| What to find | Where to look |
+|---|---|
+| Framework | `package.json`, `*.config.*`, file extensions |
+| Styling system | `tailwind.config.*`, `*.module.css`, `styled.*`, `theme.*` |
+| Design tokens | `tokens.json`, `theme.ts`, CSS custom properties (`--token-name`) |
+| Component patterns | Any existing component file — naming, exports, prop types |
+| State management | Context files, store files, or props-only patterns |
+| Existing overlapping components | Search for the component name before creating a new file |
+
+Never assume. A wrong assumption about tokens or framework produces silently broken code.
 
 ---
 
