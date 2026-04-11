@@ -1,0 +1,2 @@
+For less token consumption, user can provide details that agents can simply look up instead of discovering.
+Example: agent.manifest.yml > context_sources > codebase > what_to_discover
