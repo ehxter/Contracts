@@ -1,0 +1,89 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Component Contract System — Project Config
+# ─────────────────────────────────────────────────────────────────────────────
+#
+# 1. Copy .env.example to .env and fill in your values.
+# 2. Edit this file to match your project (codebase path, output, etc.).
+# 3. Never commit real tokens.
+# See agent.manifest.yml for the operating guide and
+# .claude/skills/component-contract/SKILL.md for the authoring rule book.
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+# ─── Figma sources ─────────────────────────────────────────────────────────────
+# Two MCP servers feed contract authoring. Prefer the Console MCP when connected;
+# fall back to the URL-based Figma MCP. The deprecated Dev Mode HTTP server (:3845)
+# and the REST API are no longer used.
+
+figma:
+
+  # Figma Console MCP — Desktop Bridge (WebSocket to the Figma desktop app).
+  # Requires the desktop app open with the Desktop Bridge plugin running.
+  # Richest source: component property definitions, variant matrix, instance
+  # overrides, reactions, plugin-fresh screenshots. Preferred when connected.
+  console_mcp:
+    server: figma-console
+    transport: websocket
+    requires: Figma desktop app + Desktop Bridge plugin open in the target file
+    connect_check: figma_get_status (probe true)
+
+  # Figma MCP (official) — reads a node straight from a Figma URL, no desktop plugin.
+  # Use for shared links, headless work, or to cross-check the Console MCP.
+  figma_mcp:
+    server: official Figma MCP
+    input: Figma node URL (fileKey + node-id)
+    # Personal access token, only if your Figma MCP setup needs one.
+    # Set via FIGMA_PAT in .env — never write it here directly.
+    personal_access_token: ${FIGMA_PAT}
+
+
+# ─── Codebase (build mode) ─────────────────────────────────────────────────────
+
+codebase:
+  # Path to the target codebase where components are written. Set CODEBASE_PATH in .env.
+  path: ${CODEBASE_PATH}
+
+  # Leave blank to let the agent detect from the codebase.
+  framework: ~          # react | vue | svelte | angular | web-components | other
+  styling_system: ~     # tailwind | css-modules | styled-components | sass | css-in-js | other
+  components_subdir: ~   # where new component files are created
+
+
+# ─── Output ────────────────────────────────────────────────────────────────────
+
+output:
+  # Root directory of component contracts. Each contract: components/<category>/<name>.json
+  components_dir: ./components
+
+  # Contracts are JSON only.
+  formats:
+    - json
+
+  # Annotated template to copy when authoring a new contract.
+  template: ./templates/contract.template.json
+
+  # schema.json is a non-enforcing stub; the template + skill are the real guideline.
+  schema_path: ./schema.json
+
+
+# ─── Authoring ───────────────────────────────────────────────────────────────
+
+authoring:
+  # The semi-strict rule book the agent loads to create/update a contract.
+  skill: ./.claude/skills/component-contract/SKILL.md
+
+  # No machine validation: the consumer is an LLM. Enforcement is the section policy.
+  validation: none
+  section_policy: ./docs/requirements.md
+
+
+# ─── Documentation ───────────────────────────────────────────────────────────
+
+docs:
+  manifest:     ./agent.manifest.yml
+  pipeline:     ./docs/agents.md
+  context:      ./docs/context.md
+  glossary:     ./docs/glossary.md
+  requirements: ./docs/requirements.md
+  limitations:  ./docs/limitations.md
+  dependencies: ./docs/dependencies.md

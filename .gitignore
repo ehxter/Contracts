@@ -1,0 +1,13 @@
+# Environment — contains Figma personal access token
+.env
+
+# Local config overrides (user-specific, not for sharing)
+config.local.yml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editors
+.vscode/settings.json
+*.swp

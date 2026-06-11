@@ -1,0 +1,237 @@
+{
+  "_template": {
+    "what": "Hierarchical, annotated template for a component behavioral contract. Copy this file, delete every key beginning with an underscore, and keep only the sections your component actually needs.",
+    "how_to_read": {
+      "_tier": "required = every contract has it | recommended = include unless clearly N/A | optional = include only when _when applies",
+      "_when": "the condition under which an optional section earns its place",
+      "_guide": "one-line instruction on how to fill the section",
+      "underscore_keys": "Any key starting with _ is guidance for the author and is NOT part of a finished contract. Strip all of them."
+    },
+    "golden_rules": [
+      "Behavioral, not visual: never write colors, sizes, typography, spacing, radii, shadows, z-index, durations, or class names. Those live in Figma/design tokens.",
+      "This contract is authoritative over Figma where they differ. Record any divergence in a figma_note.",
+      "Lean by default: start from the required core and add optional sections only when the component's behavior demands them.",
+      "Cross-reference shared/nested components instead of duplicating them (e.g. 'see the <name> contract').",
+      "Use the Extra Props entry to capture real data inputs that are not expressible as Figma variant properties."
+    ],
+    "output_location": "components/<category>/<name>.json (single JSON file, JSON only)"
+  },
+
+  "kind": "component",
+  "_kind": { "_tier": "required", "_guide": "Almost always 'component'. Reserved for future kinds (e.g. 'pattern')." },
+
+  "category": "chart",
+  "_category": { "_tier": "optional", "_when": "the component belongs to a named family that affects how it is read (e.g. 'chart'). Omit for plain components.", "_guide": "A short family label." },
+
+  "name": "Component Name",
+  "_name": { "_tier": "required", "_guide": "Canonical human name; should match the Figma component/component-set name (note any misspelling in figma.figmaName)." },
+
+  "version": "1.0.0",
+  "_version": { "_tier": "required", "_guide": "Semantic version of the BEHAVIORAL contract. Bump major on behavior/transition/emit changes, minor on new states/props, patch on clarifications. Visual-only Figma changes do not bump it." },
+
+  "figma": {
+    "_tier": "required",
+    "_guide": "Where this component lives in Figma. nodeId + URL are the minimum. Add the optional keys when useful.",
+    "nodeId": "0:0",
+    "URL": "https://www.figma.com/design/<fileKey>/<file>?node-id=0-0",
+    "figmaName": "(optional) the exact Figma layer name if it differs from name or is misspelled",
+    "pageId": "(optional) canvas/page node id, e.g. 0:1",
+    "documentationPage": {
+      "_when": "a separate Figma page documents the variant matrix / anatomy / behavior",
+      "nodeId": "0:0",
+      "URL": "https://www.figma.com/design/<fileKey>/<file>?node-id=0-0",
+      "note": "What this documentation node shows (e.g. variant matrix rows/columns)."
+    }
+  },
+
+  "figma_design_notes": [
+    "_tier: optional",
+    "_when: Figma represents the component poorly — typically a static mock of a dynamic/data-driven component (charts).",
+    "_guide: List the caveats. State plainly that screenshots are the source of truth for look/proportion and that code/measurements are approximate; call out what is baked vs. data-driven, i.e. what (counts, shapes, labels, ticks) is variable and derived from data rather than fixed."
+  ],
+
+  "description": "One short paragraph stating, in behavioral terms, what the component is and does. No appearance details.",
+  "_description": { "_tier": "required", "_guide": "Purpose + core behavior in 2-5 sentences. Mention authority over Figma only if relevant." },
+
+  "intent": {
+    "_tier": "recommended",
+    "_guide": "Concrete use cases — when a designer/developer would reach for this component.",
+    "use cases": [
+      "Use case one",
+      "Use case two"
+    ]
+  },
+
+  "props": {
+    "_tier": "required",
+    "_guide": "Behavioral inputs the consumer controls. One entry per prop. Include 'Extra Props' for data inputs not modeled as Figma variants. Use '_note' for provisional prop sets (e.g. charts).",
+    "_note": "(optional) Use when the prop set is provisional, e.g. mirrors current Figma properties and is expected to change when wired to real data.",
+    "<Enum Prop>": {
+      "type": "enum",
+      "default": "OptionA",
+      "options": ["OptionA", "OptionB"],
+      "figma_property": "(optional) exact Figma variant property name, or null if it has no Figma mapping",
+      "description": "What this prop changes about behavior."
+    },
+    "<Boolean Prop>": {
+      "type": "boolean",
+      "default": true,
+      "description": "What toggling this prop does. If it gates a nested element, say so."
+    },
+    "<String Prop>": {
+      "type": "string",
+      "default": null,
+      "required": false,
+      "description": "What text it supplies and where it is shown."
+    },
+    "Extra Props": {
+      "_guide": "Catch-all describing real data props required for a complete implementation that are NOT behavioral toggles or Figma variants (image sources, URLs/handlers, item collections, data series, etc.).",
+      "description": "Additional data props required for implementation but not behavioral toggles: ...",
+      "figma_note": "(optional) State explicitly where this contract overrides the Figma demo state, and that the contract is authoritative."
+    }
+  },
+
+  "modes": {
+    "_tier": "optional",
+    "_when": "an external/parent-driven mode (not an internal state) changes how the component behaves (e.g. default vs selectable).",
+    "_guide": "Describe each mode and how it changes the same triggers' effects.",
+    "description": "How modes are applied (usually by the parent container) and what they change.",
+    "<mode-name>": { "description": "What this mode does and how interactions differ in it." }
+  },
+
+  "variants": {
+    "_tier": "optional",
+    "_when": "one component renders several major variants that differ in content/sections (e.g. Video / Live / Empty State).",
+    "_guide": "One entry per variant: its purpose, header, and which sections it shows. Pair with conditional_behaviors.",
+    "<Variant>": {
+      "description": "What this variant represents.",
+      "header": "(optional) header title/icon used by this variant.",
+      "sections": { "<Section>": "What this section shows in this variant." }
+    }
+  },
+
+  "states": {
+    "_tier": "optional",
+    "_when": "the component has distinct interactive UI states (rest/hover/selected/disabled/...). Display-only components omit this.",
+    "_guide": "One entry per state. figma_variant maps to the Figma variant label or null if inferred. Always give entry/exit conditions.",
+    "<state>": {
+      "figma_variant": "State=Value | null",
+      "description": "What is true while in this state.",
+      "entry_conditions": ["what causes entry"],
+      "exit_conditions": ["what causes exit"]
+    }
+  },
+
+  "state_machine": {
+    "_tier": "optional",
+    "_when": "the component moves between states or variants and the moves are worth formalizing. This is the SINGLE place for transitions — including variant-to-variant conversions (e.g. Empty State -> Video) — and for named semantic operations (e.g. toggle/activate) reachable from multiple triggers.",
+    "_guide": "Declare the initial state and every valid transition (from/to/trigger/guard). Variant conversions are just transitions. Document multi-trigger operations as named actions with their effects and emits.",
+    "initial": "rest",
+    "transitions": [
+      { "from": "rest", "to": "hovered", "trigger": "pointer.enter", "guard": "disabled is false" },
+      { "from": "Empty State", "to": "Video", "trigger": "the user uploads a first video", "description": "variant conversion" }
+    ],
+    "<named_action>": {
+      "description": "A semantic operation (toggle/activate/select) reachable from multiple triggers.",
+      "triggers": ["pointer.click", "keyboard.enter.up"],
+      "guard": "disabled is false",
+      "effects": ["what happens"],
+      "emits": "event-name"
+    }
+  },
+
+  "triggers": {
+    "_tier": "optional",
+    "_when": "the component is interactive. Covers all runtime interactions, including chart hover/scrub/select. Use input categories (pointer/keyboard/touch/resize/programmatic) for rich components, or a flat set of named triggers for simple ones.",
+    "_guide": "Each trigger has a description (what fires it) and an effect (what the component does). For interactions Figma mocks statically (charts), add a figma_limitation note on the trigger; record what is data-driven in figma_design_notes.",
+    "<named_trigger>": { "description": "what the user does", "effect": "what happens", "figma_limitation": "(optional) how Figma mocks this statically" },
+    "pointer": { "click": { "description": "...", "effect": "..." } },
+    "keyboard": { "description": "or per-key entries" },
+    "touch": { "tap": { "description": "...", "effect": "..." } }
+  },
+
+  "emits": {
+    "_tier": "optional",
+    "_when": "the component fires events outward to its consumer.",
+    "_guide": "Each: description, payload shape, and not_emitted_when suppression rules.",
+    "<event-name>": { "description": "when it fires", "payload": { "key": "behavioral type" }, "not_emitted_when": ["suppression condition"] }
+  },
+
+  "accessibility": {
+    "_tier": "optional",
+    "_when": "a11y behavior matters for this component AND the behavioral prompt calls for it. (aria-* may instead be modeled as props — see the template's <String Prop>.)",
+    "_guide": "Capture role, managed ARIA attributes, keyboard navigation, focus management, and screen-reader announcements — behaviorally, not visually.",
+    "role": "WAI-ARIA role of the root",
+    "aria_attributes": { "<aria-attr>": "what it reflects" },
+    "keyboard_navigation": { "receives_focus": true, "tab_stop": "when it is in the tab order", "<key>": "behavior" },
+    "focus_management": { "focus_visible": "when a focus indicator is required", "focus_trap": false, "focus_on_disable": "what happens to focus if disabled while focused" },
+    "screen_reader": ["announcement that must occur on a key interaction"]
+  },
+
+  "responsive": {
+    "_tier": "recommended",
+    "_guide": "Behavioral/layout changes driven by size — NOT visual reflow. Use width/height + breakpoint_behaviors. Empty breakpoint_behaviors ({}) means no size-driven behavior.",
+    "resize": {
+      "description": "How the component responds to available space (often via a Size prop rather than fluid resizing).",
+      "width": "determined by parent | fixed | ...",
+      "height": "determined by content | fixed per size | ...",
+      "breakpoint_behaviors": {
+        "desktop": "what is true on desktop",
+        "mobile": "what is true on mobile"
+      }
+    }
+  },
+
+  "composition": {
+    "_tier": "required (the single structural section for every component, charts included)",
+    "_guide": "What the component is built from and what it asks of its parent. Use nested_components for child components (mark shared:true and used_when), nested_elements for internal/structural parts (for charts: axes, grid, bars/curve, tooltip, etc. — describe each part behaviorally, use a 'parts' map for sub-structure, and used_when for prop-gated parts), slots for consumer-fillable slots, and parent_requirements for obligations on the parent.",
+    "nested_components": {
+      "<Child Component>": {
+        "shared": false,
+        "used_when": "(optional) the prop/state/variant that makes this child appear",
+        "figma": { "nodeId": "0:0", "URL": "(optional) if the child has its own Figma source" },
+        "description": "What the child contributes. If it has its own contract, say 'see the <name> contract'.",
+        "props": { "_note": "(optional) inline a nested child's key props when it has no standalone contract" },
+        "behaviors": [
+          "_tier: optional",
+          "_when: a nested child has no standalone contract, or its behavior in this parent's context is non-obvious (e.g. only one state is interactive, what activating it does, what it never decides for itself).",
+          "_guide: Prose bullets describing the child's in-context behavioral rules. Behavioral only — no visuals."
+        ]
+      }
+    },
+    "nested_elements": {
+      "<Internal Element>": { "type": "container | element", "description": "Internal structure, not a consumer-facing slot." }
+    },
+    "slots": {
+      "_guide": "Consumer-fillable child slots. Use {} or a 'None' note when there are no slots.",
+      "<slot>": { "required": false, "cardinality": "single | multiple | none", "allowed_types": "ReactNode | component types" }
+    },
+    "parent_requirements": {
+      "_when": "the parent must provide layout, context, form association, or label association.",
+      "description": "What the parent/consumer must provide beyond props."
+    }
+  },
+
+  "constraints": {
+    "_tier": "required",
+    "_guide": "The rules that bound behavior. conditional_behaviors is the workhorse (if/then, optionally with and-if). Add mutual_exclusions and required_combinations when they apply.",
+    "conditional_behaviors": [
+      { "if": "a prop/state/variant condition", "then": "what must be true" },
+      { "if": "condition", "and-if": "second condition", "then": "what must be true" }
+    ],
+    "mutual_exclusions": [
+      { "rule": "things that cannot be active at once", "reason": "why" }
+    ],
+    "required_combinations": [
+      { "rule": "things that must co-exist", "reason": "why" }
+    ]
+  },
+
+  "scenarios": {
+    "_tier": "required key, content recommended",
+    "_guide": "Always present as a key. Named end-to-end behavioral flows in plain present-tense prose. Each traces one path from a starting condition to an outcome (and what is emitted, or that nothing is). May be {} for the most trivial display-only components, but prefer at least one or two.",
+    "<scenario_name>": "Prose walkthrough of one flow."
+  },
+
+  "notes": "_tier: required. A closing prose summary that ties the contract together: the component's essence, the key conditional behaviors, the relationship to shared/nested components, and an explicit statement that visual specifics live in Figma and that this contract is authoritative over Figma where they differ. May be a string or an object with a 'description' key."
+}

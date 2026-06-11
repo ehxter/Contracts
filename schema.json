@@ -1,0 +1,15 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "component-contract.schema.json",
+  "title": "Component Behavioral Contract",
+  "description": "NON-ENFORCING STUB. This project intentionally has no machine validation — the consumer is an LLM, so contracts are authored, not validated. The real guideline is the annotated template (templates/contract.template.json), the section policy (docs/requirements.md), and the authoring skill (.claude/skills/component-contract/SKILL.md). Visual details (colors, sizes, typography, spacing) are never valid contract content.",
+  "type": "object",
+  "x-guideline": {
+    "template": "./templates/contract.template.json",
+    "section_policy": "./docs/requirements.md",
+    "skill": "./.claude/skills/component-contract/SKILL.md",
+    "always_required": ["kind", "name", "version", "figma", "description", "props", "composition", "constraints", "scenarios", "notes"],
+    "canonical_sections_note": "One concept, one section: composition is the single structural section (no anatomy); state_machine holds all transitions and named operations (no separate transitions/interactions); triggers cover all runtime interactions (no interactivity)."
+  },
+  "properties": {}
+}

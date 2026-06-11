@@ -1,0 +1,146 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# AGENT MANIFEST — Component Contract System
+# ═══════════════════════════════════════════════════════════════════════════════
+# Read this first on a fresh clone. It defines who the agent is, the pipeline it
+# runs, and where every context source lives. Runtime values are in config.yml.
+# The step-by-step rule book is the skill: .claude/skills/component-contract/SKILL.md
+
+name: component-contract-agent
+version: 2.0.0
+
+
+# ─── What This Repo Is ─────────────────────────────────────────────────────────
+
+purpose: >
+  A store of behavioral contracts — one JSON file per UI component. Each contract
+  defines, in technology-agnostic terms, every state, trigger, interaction, and
+  constraint a component can exhibit. A contract is produced by merging a behavioral
+  prompt with Figma structure, and is consumed by a coding agent that implements the
+  component. The contract is the single source of behavioral truth and is authoritative
+  over Figma where the two differ.
+
+
+# ─── Your Two Modes ────────────────────────────────────────────────────────────
+
+modes:
+
+  author:
+    goal: behavioral prompt + Figma (Console MCP and/or Figma MCP) → write/update a contract
+    trigger: a component needs a contract, or an existing contract needs a recheck/update
+    driver: .claude/skills/component-contract/SKILL.md
+    output: components/<category>/<name>.json
+
+  build:
+    goal: contract + design + target codebase → write or update component code
+    trigger: a contract exists and needs implementing in a codebase
+    output: component source file(s) in the target codebase (using the codebase's own tokens)
+
+
+# ─── The Three Inputs ──────────────────────────────────────────────────────────
+
+inputs:
+
+  behavioral_prompt:
+    role: primary_intent
+    description: >
+      The user's description of what the component is for and how it behaves. The
+      authority on intent and on what is required vs optional. Wins all conflicts with
+      Figma; divergences are recorded in a figma_note.
+
+  figma_console_mcp:
+    role: live_structure
+    server: figma-console            # Desktop Bridge, WebSocket to the Figma desktop app
+    when: the desktop app is open with the Desktop Bridge plugin running (preferred)
+    connect_check: figma_get_status (probe true) → figma_reconnect if stale
+    tools:
+      figma_get_selection:                  What the user is pointing at
+      figma_get_component_for_development:   Deep tree — property defs, variants, overrides, reactions
+      figma_capture_screenshot:              Confirm current state (use after edits)
+      figma_get_variables:                   Token names only (never raw values)
+    note: large get_component_for_development output may be written to a file — read it in slices
+
+  figma_mcp:
+    role: structure_reference
+    server: official Figma MCP        # URL-based, no desktop plugin
+    when: a shared node URL is available, headless work, or to cross-check the Console MCP
+    url_parsing: node-id=1-2 → nodeId 1:2 ; fileKey = segment after /design/
+    tools:
+      get_metadata:        Structure overview — nodes, variants, sizes
+      get_design_context:  Reference code + tokens + reactions (read for props/nesting, not pixels)
+      get_screenshot:      Visual confirmation (short-lived URL)
+      get_variable_defs:   Token names
+
+  codebase:
+    role: implementation_target          # build mode only
+    path: config.yml → codebase.path     # set CODEBASE_PATH in .env
+    read_before_writing: true
+    discover: [framework, styling_system, design_tokens, component_patterns, existing_components]
+    never_assume: read the codebase, then write; pull all visual values from its tokens
+
+
+# ─── Reconciliation Rules ──────────────────────────────────────────────────────
+
+reconciliation:
+  - Prompt defines behavior; Figma confirms structure (variants, props, nesting); Figma is a visual reference only.
+  - The contract is authoritative over Figma. Encode the prompt's behavior; record divergences in a figma_note.
+  - No pixel values ever (color, size, type, spacing, radius, shadow) — those live in Figma/design tokens.
+  - Static-mock components (charts): screenshots win for look/proportion; code/measurements are approximate (figma_design_notes).
+  - When both MCPs are available, cross-check structure between them.
+
+
+# ─── Author Workflow (Prompt + Figma → Contract) ───────────────────────────────
+
+author_workflow:
+  - 1. Gather inputs: read the prompt; resolve the Figma source; pick the MCP (Console if connected, else Figma MCP).
+  - 2. Map structure: variant matrix + component property definitions + nested components + instance overrides.
+  - 3. Capture a screenshot for confirmation (never to extract values).
+  - 4. Merge with the prompt; resolve conflicts in the prompt's favor.
+  - 5. Choose sections by context (lean core + optional sections only as earned — see docs/requirements.md).
+  - 6. Fill templates/contract.template.json (strip the underscore-annotation keys).
+  - 7. Add figma_note for divergences; put non-Figma data inputs under Extra Props.
+  - 8. Cross-reference shared/nested components instead of duplicating them.
+  - 9. Write components/<category>/<name>.json; confirm it parses (python3 -m json.tool).
+  - 10. Self-review against the section policy / the skill's checklist.
+
+
+# ─── Build Workflow (Contract + Codebase → Code) ───────────────────────────────
+
+build_workflow:
+  - 1. Read the contract fully first; populated sections are requirements, absent optional sections are N/A.
+  - 2. Read the target codebase: framework, styling, tokens, patterns, existing components (gate before writing).
+  - 3. Fetch the design via the contract's figma block only for structure/slots — no values.
+  - 4. Implement: states/triggers/constraints/scenarios as behavior; ALL visual values from the codebase's tokens.
+  - 5. Respect composition (slots, parent_requirements) and follow cross-referenced child contracts.
+
+
+# ─── Hard Rules ─────────────────────────────────────────────────────────────────
+
+rules:
+  must:
+    - Load the component-contract skill before authoring; read the contract before building.
+    - Keep the contract authoritative over Figma; record divergences.
+    - Include the required core; add optional sections only when the behavior demands them.
+    - Capture non-Figma data inputs under Extra Props.
+  must_not:
+    - Write colors, sizes, spacing, or typography anywhere in a contract.
+    - Treat the Figma demo state as the spec.
+    - Pad a lean component with states/emits/accessibility it does not have.
+    - Produce YAML contracts — JSON only.
+
+
+# ─── File Map ───────────────────────────────────────────────────────────────────
+
+files:
+  manifest:    ./agent.manifest.yml                          # this file
+  skill:       ./.claude/skills/component-contract/SKILL.md   # ★ authoring rule book
+  template:    ./templates/contract.template.json             # ★ annotated JSON template
+  config:      ./config.yml                                   # MCP servers, codebase path, output
+  env_template: ./.env.example
+  contracts:   ./components/<category>/<name>.json
+  docs:
+    pipeline:     ./docs/agents.md           # dual-MCP pipeline + extract workflow
+    context:      ./docs/context.md          # philosophy
+    glossary:     ./docs/glossary.md         # every section defined, with its tier
+    requirements: ./docs/requirements.md     # the section policy (semi-strict)
+    limitations:  ./docs/limitations.md      # what never belongs in a contract
+    dependencies: ./docs/dependencies.md     # the MCP tooling
